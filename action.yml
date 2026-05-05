@@ -1,36 +1,57 @@
-name: GitHub Action Name
-description: A GitHub Action Descriptionto Open a specified GitHub issue using the GitHub API
+name: "Create Pull Request (API)"
+description: "A GitHub Action to create a pull request from the source branch to the target branch using the GitHub REST API"
 author: Lee Lott
 
 inputs:
-  input-1:
-    description: 'Description of input'
+  source-branch:
+    description: 'The branch you want to merge from (head)'
     required: true
-  input-2:
-    description: 'Description of input'
+  target-branch:
+    description: 'The branch you want to merge into (base)'
     required: true
-  input-3:
-    description: 'Description of input'
+  pr-title:
+    description: 'The title for the pull request'
     required: true
-
+  pr-body:
+    description: 'The body description for the pull request'
+    required: true
+  org-name:
+    description: 'The name of the GitHub Organization'
+    required: true
+  repo-name:
+    description: 'The name of the repository'
+    required: true
+  token:
+    description: 'GitHub token with access to pull requests'
+    required: true
+    
 outputs:
   result:
-    description: 'Result of the action ("success" or "failure")'
+    description: 'Result of the attempt to merge the Pull Request ("success" or "failure")'
     value: ${{ steps.action.outputs.result }}
   error-message:
-    description: 'Error message if the action fails'
+    description: 'Error message if the Pull Request merge fails'
     value: ${{ steps.action.outputs.error-message }}
-
+  pr-url:
+    description: "The URL of the created pull request"
+    value: ${{ steps.action.outputs.pr_url }}
+  pr-number:
+    description: "The number of the created pull request"
+    value: ${{ steps.action.outputs.pr_number }}
+    
 runs:
-  using: composite
+  using: "composite"
   steps:
-    - name: Action Name
+    - name: Create Pull Request
       id: action
       shell: pwsh
-      run: |        
+      run: |
         . "${{ github.action_path }}/action.ps1"
-        run_action `
-          -Input1 "${{ inputs.input-1 }}" `
-          -Input2 "${{ inputs.input-2 }}" `
-          -Inpute3 "${{ inputs.input-3 }}" `
-      
+        Create-Pull-Request `
+          -Title "${{ inputs.pr-title }}" `
+          -Head "${{ inputs.source-branch }}" `
+          -Base "${{ inputs.target-branch }}" `
+          -Body "${{ inputs.pr-body }}" `
+          -OrgName "${{ inputs.org-name }}" `
+          -RepoName "${{ inputs.repo-name  }}" `
+          -Token "${{ inputs.token }}"

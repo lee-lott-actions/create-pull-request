@@ -1,54 +1,72 @@
-# GitHub Action
+# Create Pull Request GitHub Action
 
-Description of what the GitHub Action does.
+This GitHub Action creates a pull request from a source branch to a target branch using the GitHub REST API.  
+It is designed to be simple, composable, and independent of the local git state.
 
 ## Features
-- Feature #1
-- Feature #2
-- Feature #3
+
+- Opens a pull request from any branch to any branch in your repository.
+- Uses the GitHub REST API (no dependencies on the CLI or local git).
+- Fully supports GitHub Organizations and user-owned repositories.
+- Outputs the pull request URL, number, result, and error message (if any) for use in subsequent workflow steps.
+- Designed for secure automation with the minimal required token permissions.
 
 ## Inputs
-| Name          | Description                                           | Required | Default |
-|---------------|-------------------------------------------------------|----------|---------|
-| `input-1`     | Description of input-1.                               | Yes      | N/A     |
-| `input-2`     | Description of input-2.                               | Yes      | N/A     |
-| `input-3`     | Description of input-3.                               | Yes      | N/A    |
+
+| Name            | Description                                         | Required | Default |
+|-----------------|-----------------------------------------------------|----------|---------|
+| `source-branch` | The branch you want to merge from (head)            | Yes      |         |
+| `target-branch` | The branch you want to merge into (base)            | Yes      |         |
+| `pr-title`      | The title for the pull request                      | Yes      |         |
+| `pr-body`       | The body description for the pull request           | Yes      |         |
+| `org-name`      | The name of the GitHub Organization or user         | Yes      |         |
+| `repo-name`     | The name of the repository                          | Yes      |         |
+| `token`         | GitHub token with access to pull requests           | Yes      |         |
 
 ## Outputs
-| Name           | Description                                                   |
-|----------------|---------------------------------------------------------------|
-| `result`       | Result of the action ("success" or "failure").                |
-| `error-message`| Error message if the action fails.                            |
+
+| Name           | Description                                   |
+|----------------|-----------------------------------------------|
+| `pr-url`       | The URL of the created pull request           |
+| `pr-number`    | The number of the created pull request        |
+| `result`       | `"success"` or `"failure"` for the operation  |
+| `error-message`| Error message if the pull request failed      |
 
 ## Usage
-1. **Add the Action to Your Workflow**:
-   Create or update a workflow file (e.g., `.github/workflows/your-action.yml`) in your repository.
 
-2. **Reference the Action**:
-   Use the action by referencing the repository and version (e.g., `v1`).
+Create a workflow file in your repository (e.g., `.github/workflows/create-pr.yml`).  
+**Ensure you pass all required inputs and use a valid token with PR write access.**
 
-3. **Example Workflow**:
-   ```yaml
-   name: Your Action
-   on:
-     issues:
-       types: [labeled]
-   jobs:
-     open-issue:
-       runs-on: ubuntu-latest
-       steps:
-         - name: Run Action
-           id: open
-           uses: lee-lott-actions/your-action@v1
-           with:
-             input-1: '1'
-             input-2: '2'
-             input-3: '3'
-         - name: Print Result
-           run: |
-             if [[ "${{ steps.open.outputs.result }}" == "success" ]]; then
-               echo "Issue #${{ github.event.issue.number }} successfully opened."
-             else
-               echo "Error: ${{ steps.open.outputs.error-message }}"
-               exit 1
-             fi
+### Example Workflow
+
+```yaml
+name: Create Pull Request from Main to Development
+on:
+  workflow_dispatch:
+
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Create Pull Request via API
+        id: create-pr
+        uses: lee-lott-actions/create-pull-request@v1
+        with:
+          source-branch: 'main'
+          target-branch: 'development'
+          pr-title: 'Sync main to development'
+          pr-body: 'Automated PR to keep development up-to-date with main.'
+          org-name: ${{ github.repository_owner }}
+          repo-name: ${{ github.event.repository.name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output PR Info
+        run: |
+          echo "Pull Request URL: ${{ steps.create-pr.outputs.pr-url }}"
+          echo "Pull Request Number: ${{ steps.create-pr.outputs.pr-number }}"
+          echo "Result: ${{ steps.create-pr.outputs.result }}"
+          echo "Error Message: ${{ steps.create-pr.outputs.error-message }}"
+```
