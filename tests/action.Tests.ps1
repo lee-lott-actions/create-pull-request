@@ -1,30 +1,28 @@
-# Dummy values for required parameters
-$script:Title = "Test PR"
-$script:Head = "feature/test"
-$script:Base = "main"
-$script:Body = "This is a test pull request"
-$script:OrgName = "my-org"
-$script:RepoName = "my-repo"
-$script:Token = "dummy-token"
-$script:ApiUrl = "https://api.mytests.com"
-
 Describe "Create-Pull-Request" {
   BeforeAll {
+    $script:Title     = "Test PR"
+    $script:Head      = "feature/test"
+    $script:Base      = "main"
+    $script:Body      = "This is a test pull request"
+    $script:OrgName   = "my-org"
+    $script:RepoName  = "my-repo"
+    $script:Token     = "dummy-token"
+    $script:ApiUrl    = "http://127.0.0.1:3000"
     . "$PSScriptRoot/../action.ps1"
   }
-
+    
   BeforeEach {
-    # Clean up GITHUB_OUTPUT for each test
-    $env:GITHUB_OUTPUT = "$PSScriptRoot/github_output.temp"
-    if (Test-Path $env:GITHUB_OUTPUT) { Remove-Item $env:GITHUB_OUTPUT }
+    $env:GITHUB_OUTPUT = New-TemporaryFile
+    $env:MOCK_API = $script:MockApiUrl
   }
   
-  AfterAll {
+  AfterEach {
     if (Test-Path $env:GITHUB_OUTPUT) { Remove-Item $env:GITHUB_OUTPUT }
+    Remove-Variable -Name MOCK_API -Scope Global -ErrorAction SilentlyContinue
   }
-  
-  It "creates a pull request and writes outputs for a 201 status code" {
-      # Arrange
+
+  Context "Success Cases" {
+    It "unit: Create-Pull-Request succeeds with HTTP 201" {
       Mock Invoke-WebRequest {
           [PSCustomObject]@{
               StatusCode = 201
@@ -32,9 +30,6 @@ Describe "Create-Pull-Request" {
           }
       }
 
-      $env:MOCK_API = $ApiUrl
-
-      # Act
       Create-Pull-Request `
           -Title $Title `
           -Head $Head `
@@ -43,26 +38,23 @@ Describe "Create-Pull-Request" {
           -OrgName $OrgName `
           -RepoName $RepoName `
           -Token $Token
-
-      # Assert
+  
       $output = Get-Content $env:GITHUB_OUTPUT
       $output | Should -Contain "pr_url=$ApiUrl/$OrgName/$RepoName/pull/123"
       $output | Should -Contain "pr_number=123"
       $output | Should -Contain "result=success"
+    }
   }
-
-  It "writes result=failure and error-message for a non-201 status code" {
-      # Arrange
+  
+  Context "HTTP Failure Cases" {
+    It "unit: Create-Pull-Request fails with HTTP 422" {
       Mock Invoke-WebRequest {
-          [PSCustomObject]@{
-              StatusCode = 422
-              Content = '{"message": "Validation Failed."}'
-          }
+        [PSCustomObject]@{
+          StatusCode = 422
+          Content = '{"message": "Validation Failed."}'
+        }
       }
-
-      $env:MOCK_API = $ApiUrl
-
-      # Act
+  
       Create-Pull-Request `
           -Title $Title `
           -Head $Head `
@@ -72,17 +64,123 @@ Describe "Create-Pull-Request" {
           -RepoName $RepoName `
           -Token $Token
 
-      # Assert
       $output = Get-Content $env:GITHUB_OUTPUT
       $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Pull request creation failed. Status code: 422"
+      $output | Should -Contain "error-message=Error: Pull request creation failed. Status code: 422"
+    }
+  }
+  
+  Context "Parameter Validation Failure Cases" {
+    It "unit: Create-Pull-Request fails with empty Title" {
+      Create-Pull-Request `
+        -Title "" `
+        -Head $Head `
+        -Base $Base `
+        -Body $Body `
+        -OrgName $OrgName `
+        -RepoName $RepoName `
+        -Token $Token
+      
+      $output = Get-Content $env:GITHUB_OUTPUT
+      $output | Should -Contain "result=failure"
+      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
+    }
+      
+    It "unit: Create-Pull-Request fails with empty Head" {
+      Create-Pull-Request `
+        -Title $Title `
+        -Head "" `
+        -Base $Base `
+        -Body $Body `
+        -OrgName $OrgName `
+        -RepoName $RepoName `
+        -Token $Token
+      
+      $output = Get-Content $env:GITHUB_OUTPUT
+      $output | Should -Contain "result=failure"
+      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
+    }
+      
+    It "unit: Create-Pull-Request fails with Base" {
+      Create-Pull-Request `
+        -Title $Title `
+        -Head $Head `
+        -Base "" `
+        -Body $Body `
+        -OrgName $OrgName `
+        -RepoName $RepoName `
+        -Token $Token
+      
+      $output = Get-Content $env:GITHUB_OUTPUT
+      $output | Should -Contain "result=failure"
+      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
+    }
+      
+    It "unit: Create-Pull-Request fails with Body" {
+      Create-Pull-Request `
+        -Title $Title `
+        -Head $Head `
+        -Base $Base `
+        -Body "" `
+        -OrgName $OrgName `
+        -RepoName $RepoName `
+        -Token $Token
+    
+      $output = Get-Content $env:GITHUB_OUTPUT
+      $output | Should -Contain "result=failure"
+      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
+    }
+      
+    It "unit: Create-Pull-Request fails with OrgName" {
+      Create-Pull-Request `
+        -Title $Title `
+        -Head $Head `
+        -Base $Base `
+        -Body $Body `
+        -OrgName "" `
+        -RepoName $RepoName `
+        -Token $Token
+    
+      $output = Get-Content $env:GITHUB_OUTPUT
+      $output | Should -Contain "result=failure"
+      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
+    }
+      
+    It "unit: Create-Pull-Request fails with RepoName" {
+      Create-Pull-Request `
+        -Title $Title `
+        -Head $Head `
+        -Base $Base `
+        -Body $Body `
+        -OrgName $OrgName `
+        -RepoName "" `
+        -Token $Token
+    
+      $output = Get-Content $env:GITHUB_OUTPUT
+      $output | Should -Contain "result=failure"
+      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
+    }
+      
+    It "unit: Create-Pull-Request fails with Token" {
+      Create-Pull-Request `
+        -Title $Title `
+        -Head $Head `
+        -Base $Base `
+        -Body $Body `
+        -OrgName $OrgName `
+        -RepoName $RepoName `
+        -Token ""
+    
+      $output = Get-Content $env:GITHUB_OUTPUT
+      $output | Should -Contain "result=failure"
+      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
+    }    
   }
 
-  It "writes result=failure and error-message on exception" {
-      # Arrange
+  Context "Exception Failure Cases" {
+    It "unit: Create-Pull-Request fails with exception" {
       Mock Invoke-WebRequest { throw "API Error" }
-      $env:MOCK_API = $ApiUrl
-
+      
       try {
         Create-Pull-Request `
             -Title $Title `
@@ -93,115 +191,10 @@ Describe "Create-Pull-Request" {
             -RepoName $RepoName `
             -Token $Token
       } catch {}
-
-      # Assert
+      
       $output = Get-Content $env:GITHUB_OUTPUT
       $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Pull request creation threw an exception and failed."
+      $output | Should -Contain "error-message=Error: Pull request creation threw an exception and failed."
+    }  
   }
-
-  It "writes result=failure for empty Title" {
-      Create-Pull-Request `
-          -Title "" `
-          -Head $Head `
-          -Base $Base `
-          -Body $Body `
-          -OrgName $OrgName `
-          -RepoName $RepoName `
-          -Token $Token
-  
-      $output = Get-Content $env:GITHUB_OUTPUT
-      $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
-  }
-  
-  It "writes result=failure for empty Head" {
-      Create-Pull-Request `
-          -Title $Title `
-          -Head "" `
-          -Base $Base `
-          -Body $Body `
-          -OrgName $OrgName `
-          -RepoName $RepoName `
-          -Token $Token
-  
-      $output = Get-Content $env:GITHUB_OUTPUT
-      $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
-  }
-  
-  It "writes result=failure for empty Base" {
-      Create-Pull-Request `
-          -Title $Title `
-          -Head $Head `
-          -Base "" `
-          -Body $Body `
-          -OrgName $OrgName `
-          -RepoName $RepoName `
-          -Token $Token
-  
-      $output = Get-Content $env:GITHUB_OUTPUT
-      $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
-  }
-  
-  It "writes result=failure for empty Body" {
-      Create-Pull-Request `
-          -Title $Title `
-          -Head $Head `
-          -Base $Base `
-          -Body "" `
-          -OrgName $OrgName `
-          -RepoName $RepoName `
-          -Token $Token
-  
-      $output = Get-Content $env:GITHUB_OUTPUT
-      $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
-  }
-  
-  It "writes result=failure for empty OrgName" {
-      Create-Pull-Request `
-          -Title $Title `
-          -Head $Head `
-          -Base $Base `
-          -Body $Body `
-          -OrgName "" `
-          -RepoName $RepoName `
-          -Token $Token
-  
-      $output = Get-Content $env:GITHUB_OUTPUT
-      $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
-  }
-  
-  It "writes result=failure for empty RepoName" {
-      Create-Pull-Request `
-          -Title $Title `
-          -Head $Head `
-          -Base $Base `
-          -Body $Body `
-          -OrgName $OrgName `
-          -RepoName "" `
-          -Token $Token
-  
-      $output = Get-Content $env:GITHUB_OUTPUT
-      $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
-  }
-  
-  It "writes result=failure for empty Token" {
-      Create-Pull-Request `
-          -Title $Title `
-          -Head $Head `
-          -Base $Base `
-          -Body $Body `
-          -OrgName $OrgName `
-          -RepoName $RepoName `
-          -Token ""
-  
-      $output = Get-Content $env:GITHUB_OUTPUT
-      $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Missing required parameters: Title, Head, Base, Body, OrgName, RepoName, and token must be provided."
-  }  
 }
