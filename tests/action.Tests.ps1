@@ -194,7 +194,8 @@ Describe "Create-Pull-Request" {
       
       $output = Get-Content $env:GITHUB_OUTPUT
       $output | Should -Contain "result=failure"
-      $output | Should -Contain "error-message=Error: Pull request creation threw an exception and failed."
+      $output | Where-Object { $_ -match "^error-message=Error: Pull request creation threw an exception and failed. Exception:" } |
+			  Should -Not -BeNullOrEmpty
     }  
   }
 }
