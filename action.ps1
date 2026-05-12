@@ -44,22 +44,24 @@ function Create-Pull-Request {
 
   try {
     Write-Host "Creating Pull Request..."
-    $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method POST -Body $body
+    $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method POST -Body $body -SkipHttpErrorCheck
 
     if ($response.StatusCode -eq 201) {
       $pr = $response.Content | ConvertFrom-Json
-      "pr_url=$($pr.html_url)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-      "pr_number=$($pr.number)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-      "result=success" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      Add-Content -Path $env:GITHUB_OUTPUT -Value "pr_url=$($pr.html_url)"
+      Add-Content -Path $env:GITHUB_OUTPUT -Value "pr_number=$($pr.number)"
+      Add-Content -Path $env:GITHUB_OUTPUT -Value "result=success"
       Write-Host "Pull Request #$($pr.number) created."
     } else {
-      "result=failure" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-      "error-message=Pull request creation failed. Status code: $($response.StatusCode)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-      Write-Host "Pull request creation failed. Status code: $($response.StatusCode)"
+      $errorMsg = "Error: Pull request creation failed. Status code: $($response.StatusCode)"
+      Add-Content -Path $env:GITHUB_OUTPUT -Value "result=failure"
+      Add-Content -Path $env:GITHUB_OUTPUT -Value "error-message=$errorMsg"
+      Write-Host $errorMsg
     }
   } catch {
-    "result=failure" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-    "error-message=Pull request creation threw an exception and failed." | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-    Write-Error "Failed to create pull request: $_"
+    $errorMsg = "Error: Pull request creation threw an exception and failed. Exception: $($_.Exception.Message)"
+    Add-Content -Path $env:GITHUB_OUTPUT -Value "result=failure"
+    Add-Content -Path $env:GITHUB_OUTPUT -Value "error-message=$errorMsg"
+    Write-Host $errorMsg
   }
 }
