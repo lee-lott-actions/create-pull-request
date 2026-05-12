@@ -59,7 +59,7 @@ function Create-Pull-Request {
       Write-Host $errorMsg
     }
   } catch {
-    $errorMsg = "error-message=Error: Pull request creation threw an exception and failed. Exception: $($_.Exception.Message)"
+    $errorMsg = "Pull request creation threw an exception and failed. Exception: $($_.Exception.Message)"
     Add-Content -Path $env:GITHUB_OUTPUT -Value "result=failure"
     Add-Content -Path $env:GITHUB_OUTPUT -Value "error-message=$errorMsg"
     Write-Host $errorMsg
